@@ -432,13 +432,37 @@ getRedirectResult(auth).then(r => {
   if (r) token = GoogleAuthProvider.credentialFromResult(r)?.accessToken || null;
 }).catch(()=>{});
 
+
 onAuthStateChanged(auth, async u => {
-  if (!u){ me = null; show("login"); return; }
-  me = u;
-  const snap = await getDoc(doc(db,"users",u.uid));
-  if (!snap.exists()){ gateUI(false); return; }
-  enter();
+  try {
+    if (!u) {
+      me = null;
+      show("login");
+      return;
+    }
+
+    me = u;
+
+    const snap = await getDoc(doc(db, "users", u.uid));
+
+    if (!snap.exists()) {
+      gateUI(false);
+      return;
+    }
+
+    await enter();
+
+  } catch (e) {
+    console.error("App startup error:", e);
+
+    show("boot");
+    $("boot").innerHTML = "";
+
+    const msg = document.createElement("p");
+    msg.style.color = "#ff6b6b";
+    msg.textContent =
+      "Firebase Error: " + (e.code || e.message);
+
+    $("boot").appendChild(msg);
+  }
 });
-</script>
-</body>
-</html>
