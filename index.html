@@ -38,6 +38,24 @@ input[type=text],input[type=password]{width:100%;background:#0c0c0f;border:1px s
 select{background:#0c0c0f;border:1px solid #2e2e39;color:#fff;padding:9px;border-radius:9px;font-size:14px}
 </style>
 </head>
+  
+<script>
+window.addEventListener("error", function(e) {
+  const boot = document.getElementById("boot");
+  if (boot) {
+    boot.textContent = "JavaScript Error: " + e.message;
+  }
+});
+
+window.addEventListener("unhandledrejection", function(e) {
+  const boot = document.getElementById("boot");
+  if (boot) {
+    boot.textContent = "Firebase Error: " +
+      (e.reason?.message || e.reason);
+  }
+});
+</script>
+  
 <body>
 
 <div id="boot" class="wrap"><p class="muted">Load ho raha hai...</p></div>
