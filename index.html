@@ -1,0 +1,79 @@
+
+
+<div id="boot" class="wrap"><p class="muted">Load ho raha hai...</p></div>
+
+
+<div id="login" class="wrap hide">
+  <h1>Clips</h1>
+  <p class="muted">Private video room. Sirf bulaye gaye log andar aa sakte hain.</p>
+  <div class="card">
+    <button class="btn" id="gbtn">Google se login</button>
+    <p class="err" id="lerr"></p>
+  </div>
+  <p class="muted">Login pe Drive ki permission maangi jayegi — sirf is app ki banayi files dikhengi, tumhare baaki Drive ka kuch nahi.</p>
+</div>
+
+
+<div id="gate" class="wrap hide">
+  <h1 id="gateTitle">Access code</h1>
+  <p class="muted" id="gateSub">Code daalo.</p>
+  <div class="card">
+    <input type="password" id="code" inputmode="numeric" maxlength="12" placeholder="••••">
+    <div class="bar"><i id="gbar"></i></div>
+    <p class="err" id="gerr"></p>
+    <button class="btn" id="gok">Andar jao</button>
+  </div>
+</div>
+
+
+<div id="app" class="wrap hide">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h1 style="margin:0">Clips</h1>
+    <button class="btn ghost sm" id="out">Logout</button>
+  </div>
+  <p class="muted" id="whoami" style="margin:4px 0 14px"></p>
+
+  <div id="tabGallery">
+    <p class="muted" id="gempty">Abhi kuch nahi hai.</p>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div id="tabUpload" class="hide">
+    <div class="card">
+      <input type="file" id="file" accept="video/*,image/*" style="color:#eaeaf0;width:100%">
+      <div class="bar" style="margin-top:12px"><i id="ubar"></i></div>
+      <p class="err" id="uerr"></p>
+      <button class="btn" id="ubtn" style="margin-top:8px">Upload</button>
+      <p class="muted" style="margin:10px 0 0">Original file jayegi, koi compress nahi. Bada video ho to net na kaato — rukne pe wahin se chalu hoga.</p>
+    </div>
+  </div>
+
+  <div id="tabOwner" class="hide">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>Log</strong><span class="muted" id="ucount"></span>
+      </div>
+      <div id="users"></div>
+    </div>
+    <div class="card" id="codeBox">
+      <strong>Codes</strong>
+      <p class="muted">Badalne pe purana code turant band ho jayega.</p>
+      <select id="which">
+        <option value="user">User code (7067)</option>
+        <option value="owner">Owner code (7098)</option>
+      </select>
+      <input type="password" id="newcode" inputmode="numeric" maxlength="12" placeholder="naya code" style="margin-top:8px">
+      <p class="err" id="cerr"></p>
+      <button class="btn" id="cbtn" style="margin-top:8px">Badlo</button>
+    </div>
+  </div>
+</div>
+
+<div class="tabs hide" id="tabs">
+  <button data-t="Gallery" class="on">Gallery</button>
+  <button data-t="Upload">Upload</button>
+  <button data-t="Owner" id="otab">Owner</button>
+</div>
+
+
+
