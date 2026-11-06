@@ -191,41 +191,75 @@ function gateUI(isOwner){
 }
 
 async function tryCode(){
+
+async function tryCode(){
   const v = $("code").value.trim();
   if (!v) return;
-  const locked = +localStorage.getItem("lockUntil") || 0;
-  if (Date.now() < locked){
-    $("gerr").textContent = "Bahut galat. " + Math.ceil((locked - Date.now())/1000) + "s baad try karo.";
-    return;
-  }
+
+  $("gerr").textContent = "";
   $("gbar").style.width = "40%";
-  const cfg = await getCfg();
-  const h = await sha(v);
-  let role = null;
-  if (h === cfg.ownerCodeHash) role = "owner";
-  else if (h === cfg.userCodeHash) role = "user";
 
-  if (!role){
-    let n = (+localStorage.getItem("tries") || 0) + 1;
-    localStorage.setItem("tries", n);
-    if (n >= 5){ localStorage.setItem("tries", 0); localStorage.setItem("lockUntil", Date.now()+60000); }
-    $("gerr").textContent = "Galat code. " + (5 - n > 0 ? (5-n) + " try bache." : "1 minute lock.");
+  try {
+    const locked = +localStorage.getItem("lockUntil") || 0;
+
+    if (Date.now() < locked) {
+      $("gerr").textContent =
+        "60 seconds wait karo.";
+      $("gbar").style.width = "0";
+      return;
+    }
+
+    const cfg = await getCfg();
+    const h = await sha(v);
+
+    let role = null;
+
+    if (h === cfg.ownerCodeHash) role = "owner";
+    else if (h === cfg.userCodeHash) role = "user";
+
+    if (!role) {
+      let n = (+localStorage.getItem("tries") || 0) + 1;
+      localStorage.setItem("tries", n);
+
+      if (n >= 5) {
+        localStorage.setItem("tries", 0);
+        localStorage.setItem("lockUntil", Date.now()+60000);
+      }
+
+      $("gerr").textContent = "Galat code.";
+      $("gbar").style.width = "0";
+      return;
+    }
+
+    const ref = doc(db, "users", me.uid);
+    const snap = await getDoc(ref);
+
+    if (!snap.exists()) {
+      await setDoc(ref, {
+        email: me.email,
+        role: role,
+        createdAt: serverTimestamp()
+      });
+    } else if (snap.data().role !== "owner") {
+      await updateDoc(ref, { role: role });
+    }
+
+    localStorage.setItem("tries", 0);
+    sessionStorage.setItem("unlocked", role);
+
+    $("gbar").style.width = "100%";
+    await enter();
+
+  } catch(e) {
+    console.error("Owner login error:", e);
+
+    $("gerr").textContent =
+      "Error: " + (e.code || e.message);
+
     $("gbar").style.width = "0";
-    return;
   }
-  localStorage.setItem("tries", 0);
-  $("gbar").style.width = "100%";
-
-  const ref = doc(db,"users",me.uid);
-  const snap = await getDoc(ref);
-  const data = { email: me.email, role: myDoc?.role === "owner" ? "owner" : role };
-  if (!snap.exists()) await setDoc(ref, { ...data, createdAt: serverTimestamp() });
-  else if (snap.data().role === "owner") data.role = "owner";
-  else await updateDoc(ref, { role });
-
-  sessionStorage.setItem("unlocked", data.role);
-  enter();
 }
+
 
 async function enter(){
   const snap = await getDoc(doc(db,"users",me.uid));
