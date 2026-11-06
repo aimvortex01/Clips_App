@@ -1,7 +1,46 @@
-
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clips</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#0c0c0f;color:#eaeaf0;padding-bottom:80px}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 16px}
+.btn{background:#5b5bf5;color:#fff;border:0;padding:13px 18px;border-radius:11px;font-size:15px;font-weight:600;width:100%;cursor:pointer}
+.btn:disabled{opacity:.45}
+.btn.ghost{background:#1c1c22;color:#eaeaf0}
+.btn.sm{width:auto;padding:7px 12px;font-size:13px;border-radius:8px}
+.btn.red{background:#c33}
+.card{background:#16161c;border:1px solid #26262f;border-radius:14px;padding:14px;margin-bottom:12px}
+input[type=text],input[type=password]{width:100%;background:#0c0c0f;border:1px solid #2e2e39;color:#fff;padding:14px;border-radius:11px;font-size:17px;letter-spacing:3px;text-align:center}
+.hide{display:none!important}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#101016;border-top:1px solid #24242d;padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;background:0;border:0;color:#8a8a99;padding:14px 4px;font-size:13px;font-weight:600}
+.tabs button.on{color:#7c7cff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.thumb{background:#16161c;border:1px solid #26262f;border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.thumb img{width:100%;aspect-ratio:16/10;object-fit:cover;background:#000;display:block}
+.thumb .meta{padding:8px;font-size:11px;color:#9a9aab;word-break:break-all}
+.thumb .acts{display:flex;gap:6px;padding:0 8px 8px}
+.thumb .acts a,.thumb .acts button{flex:1;text-align:center;background:#26262f;color:#fff;border:0;padding:8px;border-radius:8px;font-size:12px;text-decoration:none;font-weight:600}
+.bar{height:6px;background:#26262f;border-radius:99px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:#5b5bf5;transition:width .2s}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #24242d;font-size:14px}
+.row:last-child{border:0}
+.muted{color:#8a8a99;font-size:13px}
+.err{color:#ff6b6b;font-size:13px;margin-top:8px;min-height:18px}
+.badge{font-size:10px;padding:2px 7px;border-radius:99px;background:#2a2a35;color:#a5a5bb}
+.badge.owner{background:#4b3a00;color:#ffd34d}
+.badge.admin{background:#12304a;color:#6cc0ff}
+select{background:#0c0c0f;border:1px solid #2e2e39;color:#fff;padding:9px;border-radius:9px;font-size:14px}
+</style>
+</head>
+<body>
 
 <div id="boot" class="wrap"><p class="muted">Load ho raha hai...</p></div>
-
 
 <div id="login" class="wrap hide">
   <h1>Clips</h1>
@@ -13,7 +52,6 @@
   <p class="muted">Login pe Drive ki permission maangi jayegi — sirf is app ki banayi files dikhengi, tumhare baaki Drive ka kuch nahi.</p>
 </div>
 
-
 <div id="gate" class="wrap hide">
   <h1 id="gateTitle">Access code</h1>
   <p class="muted" id="gateSub">Code daalo.</p>
@@ -24,7 +62,6 @@
     <button class="btn" id="gok">Andar jao</button>
   </div>
 </div>
-
 
 <div id="app" class="wrap hide">
   <div style="display:flex;justify-content:space-between;align-items:center">
@@ -75,5 +112,299 @@
   <button data-t="Owner" id="otab">Owner</button>
 </div>
 
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect,
+  getRedirectResult, reauthenticateWithPopup, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
+  collection, query, orderBy, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+const firebaseConfig = {
+  apiKey: "AIzaSyDLc70D7a4SbYZmBfLDZPaB_elHCGBkWto",
+  authDomain: "clip-29753.firebaseapp.com",
+  projectId: "clip-29753",
+  storageBucket: "clip-29753.firebasestorage.app",
+  messagingSenderId: "730234569272",
+  appId: "1:730234569272:web:91fda5698e882e1c01dccd"
+};
 
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const DEFAULT_USER = "7067", DEFAULT_OWNER = "7098";
+const SCOPE = "https://www.googleapis.com/auth/drive.file";
+
+let me = null, token = null, myRole = null, myDoc = null;
+let unsubClips = null, unsubUsers = null;
+let $ = id => document.getElementById(id);
+
+const show = id => ["boot","login","gate","app"].forEach(x => $(x).classList.toggle("hide", x !== id));
+
+async function sha(str){
+  const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+  return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2,"0")).join("");
+}
+
+async function getCfg(){
+  const s = await getDoc(doc(db,"config","app"));
+  if (s.exists()) return s.data();
+  return { userCodeHash: await sha(DEFAULT_USER), ownerCodeHash: await sha(DEFAULT_OWNER) };
+}
+
+function prov(){
+  const p = new GoogleAuthProvider();
+  p.addScope(SCOPE);
+  p.setCustomParameters({ prompt: "consent" });
+  return p;
+}
+
+async function login(){
+  $("lerr").textContent = "";
+  try {
+    const r = await signInWithPopup(auth, prov());
+    token = GoogleAuthProvider.credentialFromResult(r).accessToken;
+  } catch(e){
+    if (["auth/popup-blocked","auth/operation-not-supported-in-this-environment","auth/popup-closed-by-user"].includes(e.code)){
+      try { await signInWithRedirect(auth, prov()); } catch(e2){ $("lerr").textContent = e2.message; }
+    } else $("lerr").textContent = e.message;
+  }
+}
+
+async function ensureToken(){
+  if (token) return token;
+  const r = await reauthenticateWithPopup(auth.currentUser, prov());
+  token = GoogleAuthProvider.credentialFromResult(r).accessToken;
+  return token;
+}
+
+let mode = "user";
+function gateUI(isOwner){
+  mode = isOwner ? "owner" : "user";
+  $("gateTitle").textContent = isOwner ? "Owner code" : "Access code";
+  $("gateSub").textContent = isOwner ? "Owner panel ke liye 7098 daalo." : "Code daalo jo diya gaya hai.";
+  $("code").value = ""; $("gerr").textContent = "";
+  show("gate");
+  $("code").focus();
+}
+
+async function tryCode(){
+  const v = $("code").value.trim();
+  if (!v) return;
+  const locked = +localStorage.getItem("lockUntil") || 0;
+  if (Date.now() < locked){
+    $("gerr").textContent = "Bahut galat. " + Math.ceil((locked - Date.now())/1000) + "s baad try karo.";
+    return;
+  }
+  $("gbar").style.width = "40%";
+  const cfg = await getCfg();
+  const h = await sha(v);
+  let role = null;
+  if (h === cfg.ownerCodeHash) role = "owner";
+  else if (h === cfg.userCodeHash) role = "user";
+
+  if (!role){
+    let n = (+localStorage.getItem("tries") || 0) + 1;
+    localStorage.setItem("tries", n);
+    if (n >= 5){ localStorage.setItem("tries", 0); localStorage.setItem("lockUntil", Date.now()+60000); }
+    $("gerr").textContent = "Galat code. " + (5 - n > 0 ? (5-n) + " try bache." : "1 minute lock.");
+    $("gbar").style.width = "0";
+    return;
+  }
+  localStorage.setItem("tries", 0);
+  $("gbar").style.width = "100%";
+
+  const ref = doc(db,"users",me.uid);
+  const snap = await getDoc(ref);
+  const data = { email: me.email, role: myDoc?.role === "owner" ? "owner" : role };
+  if (!snap.exists()) await setDoc(ref, { ...data, createdAt: serverTimestamp() });
+  else if (snap.data().role === "owner") data.role = "owner";
+  else await updateDoc(ref, { role });
+
+  sessionStorage.setItem("unlocked", data.role);
+  enter();
+}
+
+async function enter(){
+  const snap = await getDoc(doc(db,"users",me.uid));
+  myDoc = snap.exists() ? snap.data() : null;
+  myRole = myDoc?.role || "user";
+  if (myRole === "owner" && sessionStorage.getItem("unlocked") !== "owner"){ gateUI(true); return; }
+
+  show("app");
+  $("tabs").classList.remove("hide");
+  $("otab").classList.toggle("hide", !(myRole === "owner" || myRole === "admin"));
+  $("whoami").textContent = me.email + " · " + myRole;
+  watchClips();
+  if (myRole === "owner" || myRole === "admin") watchUsers();
+}
+
+function watchClips(){
+  if (unsubClips) return;
+  const q = query(collection(db,"clips"), orderBy("createdAt","desc"));
+  unsubClips = onSnapshot(q, s => {
+    const g = $("grid"); g.innerHTML = "";
+    $("gempty").classList.toggle("hide", !s.empty);
+    s.forEach(d => {
+      const c = d.data(), el = document.createElement("div");
+      el.className = "thumb";
+      const img = document.createElement("img");
+      img.src = "https://drive.google.com/thumbnail?id=" + c.driveId + "&sz=w500";
+      img.loading = "lazy";
+      const m = document.createElement("div");
+      m.className = "meta";
+      m.textContent = c.name + " · " + (c.size/1048576).toFixed(1) + " MB";
+      const a = document.createElement("div");
+      a.className = "acts";
+      const dl = document.createElement("a");
+      dl.textContent = "Download"; dl.href = "#";
+      dl.onclick = async e => { e.preventDefault(); dl.href = await dlUrl(c.driveId); window.open(dl.href, "_blank"); };
+      a.appendChild(dl);
+      if (c.uploader === me.uid || myRole === "owner" || myRole === "admin"){
+        const del = document.createElement("button");
+        del.textContent = "Delete";
+        del.onclick = () => delClip(c, d.id);
+        a.appendChild(del);
+      }
+      el.append(img, m, a); g.appendChild(el);
+    });
+  });
+}
+
+async function dlUrl(id){
+  return "https://www.googleapis.com/drive/v3/files/" + id + "?alt=media&access_token=" + await ensureToken();
+}
+
+async function delClip(c, docId){
+  if (!confirm("Delete " + c.name + "?")) return;
+  try {
+    await fetch("https://www.googleapis.com/drive/v3/files/" + c.driveId,
+      { method:"DELETE", headers:{ Authorization:"Bearer " + await ensureToken() } });
+  } catch(e){}
+  await deleteDoc(doc(db,"clips",docId));
+}
+
+async function doUpload(){
+  const f = $("file").files[0];
+  $("uerr").textContent = "";
+  if (!f) { $("uerr").textContent = "Pehle file chuno."; return; }
+  $("ubtn").disabled = true;
+  try {
+    const t = await ensureToken();
+    const meta = { name: f.name, mimeType: f.type || "application/octet-stream" };
+    const init = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + t,
+        "Content-Type": "application/json; charset=UTF-8",
+        "X-Upload-Content-Type": meta.mimeType,
+        "X-Upload-Content-Length": String(f.size)
+      },
+      body: JSON.stringify(meta)
+    });
+    if (!init.ok) throw new Error("Upload shuru nahi hua (" + init.status + ")");
+    const session = init.headers.get("Location");
+
+    const CH = 1024 * 1024 * 2;
+    let at = 0, driveId = null;
+    while (at < f.size){
+      const end = Math.min(at + CH, f.size);
+      const r = await fetch(session, {
+        method: "PUT",
+        headers: { "Content-Range": "bytes " + at + "-" + (end-1) + "/" + f.size },
+        body: f.slice(at, end)
+      });
+      if (r.status === 308 || r.status === 200 || r.status === 201){
+        at = end;
+        $("ubar").style.width = Math.round(at * 100 / f.size) + "%";
+        if (r.status === 200 || r.status === 201){ driveId = (await r.json()).id; break; }
+      } else if (r.status === 401){
+        token = null; await ensureToken();
+      } else throw new Error("Tukda fail (" + r.status + ") — " + at + " bytes tak gaya");
+    }
+    if (!driveId) throw new Error("File poori nahi gayi");
+
+    await fetch("https://www.googleapis.com/drive/v3/files/" + driveId + "/permissions", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + t, "Content-Type": "application/json" },
+      body: JSON.stringify({ role: "reader", type: "anyone" })
+    });
+
+    let hash = "";
+    if (f.size < 104857600) hash = await sha(await f.arrayBuffer());
+
+    await addDoc(collection(db,"clips"), {
+      name: f.name, size: f.size, mime: f.type, driveId, sha256: hash,
+      uploader: me.uid, uploaderEmail: me.email, createdAt: serverTimestamp()
+    });
+    $("file").value = ""; $("ubar").style.width = "0";
+    alert("Ho gaya.");
+  } catch(e){
+    $("uerr").textContent = e.message;
+  }
+  $("ubtn").disabled = false;
+}
+
+function watchUsers(){
+  if (unsubUsers) return;
+  unsubUsers = onSnapshot(collection(db,"users"), s => {
+    const box = $("users"); box.innerHTML = "";
+    $("ucount").textContent = s.size + " log";
+    s.forEach(d => {
+      const u = d.data();
+      const r = document.createElement("div"); r.className = "row";
+      const left = document.createElement("div");
+      left.innerHTML = '<div style="font-size:13px">' + u.email + '</div>';
+      const b = document.createElement("span");
+      b.className = "badge " + (u.role || "user"); b.textContent = u.role || "user";
+      left.appendChild(b);
+      const act = document.createElement("div");
+      if (myRole === "owner" && u.role !== "owner"){
+        const t = document.createElement("button");
+        t.className = "btn ghost sm";
+        t.textContent = u.role === "admin" ? "Admin hatao" : "Admin banao";
+        t.onclick = () => updateDoc(doc(db,"users",d.id), { role: u.role === "admin" ? "user" : "admin" });
+        act.appendChild(t);
+      }
+      r.append(left, act); box.appendChild(r);
+    });
+  });
+}
+
+async function rotate(){
+  const v = $("newcode").value.trim();
+  $("cerr").textContent = "";
+  if (v.length < 4){ $("cerr").textContent = "Kam se kam 4 digit."; return; }
+  const field = $("which").value === "owner" ? "ownerCodeHash" : "userCodeHash";
+  await setDoc(doc(db,"config","app"), { [field]: await sha(v) }, { merge: true });
+  $("newcode").value = "";
+  $("cerr").textContent = "Badal gaya.";
+}
+
+$("gbtn").onclick = login;
+$("gok").onclick = tryCode;
+$("code").onkeydown = e => { if (e.key === "Enter") tryCode(); };
+$("ubtn").onclick = doUpload;
+$("cbtn").onclick = rotate;
+$("out").onclick = async () => { if (unsubClips) unsubClips(); if (unsubUsers) unsubUsers(); unsubClips = unsubUsers = null; token = null; sessionStorage.clear(); await signOut(auth); };
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b));
+  ["Gallery","Upload","Owner"].forEach(t => $("tab" + t).classList.toggle("hide", t !== b.dataset.t));
+});
+
+getRedirectResult(auth).then(r => {
+  if (r) token = GoogleAuthProvider.credentialFromResult(r)?.accessToken || null;
+}).catch(()=>{});
+
+onAuthStateChanged(auth, async u => {
+  if (!u){ me = null; show("login"); return; }
+  me = u;
+  const snap = await getDoc(doc(db,"users",u.uid));
+  if (!snap.exists()){ gateUI(false); return; }
+  enter();
+});
+</script>
+</body>
+</html>
