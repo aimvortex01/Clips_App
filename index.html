@@ -208,7 +208,6 @@ function gateUI(isOwner){
   $("code").focus();
 }
 
-async function tryCode(){
 
 async function tryCode(){
   const v = $("code").value.trim();
@@ -221,8 +220,7 @@ async function tryCode(){
     const locked = +localStorage.getItem("lockUntil") || 0;
 
     if (Date.now() < locked) {
-      $("gerr").textContent =
-        "60 seconds wait karo.";
+      $("gerr").textContent = "60 seconds wait karo.";
       $("gbar").style.width = "0";
       return;
     }
@@ -270,13 +268,11 @@ async function tryCode(){
 
   } catch(e) {
     console.error("Owner login error:", e);
-
-    $("gerr").textContent =
-      "Error: " + (e.code || e.message);
-
+    $("gerr").textContent = "Error: " + (e.code || e.message);
     $("gbar").style.width = "0";
   }
 }
+
 
 
 async function enter(){
