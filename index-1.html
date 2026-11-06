@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Clips</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;padding-bottom:78px;background:#0c0c0f;color:#eaeaf0;font-family:system-ui,sans-serif}
+.wrap{max-width:640px;margin:auto;padding:16px}h1{font-size:20px;margin:8px 0 16px}
+.btn{width:100%;padding:13px 18px;border:0;border-radius:11px;background:#5b5bf5;color:white;font-size:15px;font-weight:600}
+.btn:disabled{opacity:.45}.ghost{background:#1c1c22}.sm{width:auto;padding:7px 12px;font-size:13px}
+.card{background:#16161c;border:1px solid #26262f;border-radius:14px;padding:14px;margin-bottom:12px}
+input[type=password]{width:100%;padding:14px;border-radius:11px;border:1px solid #2e2e39;background:#0c0c0f;color:white;font-size:17px;text-align:center;letter-spacing:3px}
+.hide{display:none!important}.muted{color:#8a8a99;font-size:13px}.err{color:#ff6b6b;font-size:13px;margin-top:8px;min-height:18px}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#101016;border-top:1px solid #24242d;padding-bottom:env(safe-area-inset-bottom)}
+.tabs button{flex:1;background:none;border:0;color:#8a8a99;padding:14px 4px;font-size:13px;font-weight:600}.tabs button.on{color:#7c7cff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.thumb{background:#16161c;border:1px solid #26262f;border-radius:12px;overflow:hidden}
+.thumb img{width:100%;aspect-ratio:16/10;object-fit:cover;background:#000;display:block}.meta{padding:8px;font-size:11px;color:#9a9aab;word-break:break-all}
+.acts{display:flex;gap:6px;padding:0 8px 8px}.acts button{flex:1;background:#26262f;color:white;border:0;padding:8px;border-radius:8px;font-size:12px;font-weight:600}
+.bar{height:6px;background:#26262f;border-radius:99px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;width:0;background:#5b5bf5}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #24242d;font-size:14px}
+.badge{font-size:10px;padding:2px 7px;border-radius:99px;background:#2a2a35;color:#a5a5bb}.badge.owner{background:#4b3a00;color:#ffd34d}.badge.admin{background:#12304a;color:#6cc0ff}
+select{background:#0c0c0f;border:1px solid #2e2e39;color:white;padding:9px;border-radius:9px}
+</style>
+</head>
+<body>
+<div id="boot" class="wrap"><p class="muted">Load ho raha hai...</p></div>
+<div id="login" class="wrap hide">
+<h1>Clips</h1><p class="muted">Private video room. Sirf bulaye gaye log andar aa sakte hain.</p>
+<div class="card"><button class="btn" id="gbtn">Google se login</button><p class="err" id="lerr"></p></div>
+<p class="muted">Login par Google Drive permission maangi jayegi.</p></div>
+<div id="gate" class="wrap hide">
+<h1 id="gateTitle">Access code</h1><p class="muted" id="gateSub">Code daalo.</p>
+<div class="card"><input type="password" id="code" inputmode="numeric" maxlength="12" placeholder="••••">
+<div class="bar"><i id="gbar"></i></div><p class="err" id="gerr"></p><button class="btn" id="gok">Andar jao</button></div></div>
+<div id="app" class="wrap hide">
+<div style="display:flex;justify-content:space-between;align-items:center"><h1 style="margin:0">Clips</h1><button class="btn ghost sm" id="out">Logout</button></div>
+<p class="muted" id="whoami"></p>
+<div id="tabGallery"><p class="muted" id="gempty">Abhi kuch nahi hai.</p><div class="grid" id="grid"></div></div>
+<div id="tabUpload" class="hide"><div class="card"><input type="file" id="file" accept="video/*,image/*" style="color:white;width:100%">
+<div class="bar"><i id="ubar"></i></div><p class="err" id="uerr"></p><button class="btn" id="ubtn">Upload</button>
+<p class="muted">Original file upload hogi; compression nahi hogi. Upload ke dauran internet connection banaaye rakhein.</p></div></div>
+<div id="tabOwner" class="hide"><div class="card"><strong>Log</strong><span class="muted" id="ucount"></span><div id="users"></div></div>
+<div class="card"><strong>Codes</strong><p class="muted">Badalne par purana code band ho jayega.</p>
+<select id="which"><option value="user">User code</option><option value="owner">Owner code</option></select>
+<input type="password" id="newcode" inputmode="numeric" maxlength="12" placeholder="naya code" style="margin-top:8px">
+<p class="err" id="cerr"></p><button class="btn" id="cbtn">Badlo</button></div></div></div>
+<div class="tabs hide" id="tabs"><button data-t="Gallery" class="on">Gallery</button><button data-t="Upload">Upload</button><button data-t="Owner" id="otab">Owner</button></div>
+<script>
+window.addEventListener("error",e=>{const b=document.getElementById("boot");if(b&&!b.classList.contains("hide"))b.textContent="JavaScript Error: "+e.message});
+window.addEventListener("unhandledrejection",e=>{const b=document.getElementById("boot");if(b&&!b.classList.contains("hide"))b.textContent="Firebase Error: "+(e.reason?.message||e.reason)});
+</script>
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,reauthenticateWithPopup,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import{getFirestore,doc,getDoc,setDoc,updateDoc,deleteDoc,addDoc,collection,query,orderBy,onSnapshot,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+const firebaseConfig={apiKey:"AIzaSyDLc70D7a4SbYZmBfLDZPaB_elHCGBkWto",authDomain:"clip-29753.firebaseapp.com",projectId:"clip-29753",storageBucket:"clip-29753.firebasestorage.app",messagingSenderId:"730234569272",appId:"1:730234569272:web:91fda5698e882e1c01dccd"};
+const fb=initializeApp(firebaseConfig),auth=getAuth(fb),db=getFirestore(fb);
+const DEFAULT_USER="7067",DEFAULT_OWNER="7098",SCOPE="https://www.googleapis.com/auth/drive.file";
+let me=null,token=null,myRole=null,unsubClips=null,unsubUsers=null;
+const $=id=>document.getElementById(id);
+function show(id){["boot","login","gate","app"].forEach(x=>$(x).classList.toggle("hide",x!==id));if(id!=="app")$("tabs").classList.add("hide")}
+async function sha(value){let bytes=value instanceof ArrayBuffer?value:new TextEncoder().encode(String(value));const h=await crypto.subtle.digest("SHA-256",bytes);return[...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function getCfg(){const ref=doc(db,"config","app"),s=await getDoc(ref),d={userCodeHash:await sha(DEFAULT_USER),ownerCodeHash:await sha(DEFAULT_OWNER)};if(!s.exists()){await setDoc(ref,d);return d}const x=s.data();return{userCodeHash:x.userCodeHash||d.userCodeHash,ownerCodeHash:x.ownerCodeHash||d.ownerCodeHash}}
+function provider(){const p=new GoogleAuthProvider();p.addScope(SCOPE);p.setCustomParameters({prompt:"consent"});return p}
+async function login(){$("lerr").textContent="";$("gbtn").disabled=true;try{const r=await signInWithPopup(auth,provider());token=GoogleAuthProvider.credentialFromResult(r)?.accessToken||null}catch(e){if(["auth/popup-blocked","auth/operation-not-supported-in-this-environment"].includes(e.code)){try{await signInWithRedirect(auth,provider())}catch(x){$("lerr").textContent=x.message;$("gbtn").disabled=false}}else{$("lerr").textContent=e.message||e.code;$("gbtn").disabled=false}}}
+async function ensureToken(){if(token)return token;if(!auth.currentUser)throw Error("Pehle Google login karo.");const r=await reauthenticateWithPopup(auth.currentUser,provider());token=GoogleAuthProvider.credentialFromResult(r)?.accessToken||null;if(!token)throw Error("Google Drive permission nahi mili. Dobara login karo.");return token}
+function gateUI(owner){$("gateTitle").textContent=owner?"Owner code":"Access code";$("gateSub").textContent=owner?"Owner panel ke liye owner code daalo.":"Code daalo jo tumhe diya gaya hai.";$("code").value="";$("gerr").textContent="";$("gbar").style.width="0";show("gate")}
+async function tryCode(){
+const v=$("code").value.trim();if(!v||!me)return;$("gok").disabled=true;$("gerr").textContent="";
+try{
+const locked=Number(localStorage.getItem("lockUntil"))||0;if(Date.now()<locked){$("gerr").textContent="60 seconds wait karo." ;return}
+const cfg=await getCfg(),h=await sha(v);let role=null;if(h===cfg.ownerCodeHash)role="owner";else if(h===cfg.userCodeHash)role="user";
+if(!role){let n=(Number(localStorage.getItem("tries"))||0)+1;if(n>=5){localStorage.setItem("tries","0");localStorage.setItem("lockUntil",String(Date.now()+60000));$("gerr").textContent="5 galat attempts. 60 seconds wait karo."}else{localStorage.setItem("tries",String(n));$("gerr").textContent="Galat code."}return}
+const ref=doc(db,"users",me.uid),s=await getDoc(ref);
+if(!s.exists())await setDoc(ref,{email:me.email||"",role,createdAt:serverTimestamp()});
+else if(s.data().role!=="owner")await updateDoc(ref,{role});
+localStorage.setItem("tries","0");sessionStorage.setItem("unlocked",role);$("gbar").style.width="100%";await enter()
+}catch(e){$("gerr").textContent="Error: "+(e.code||e.message)}finally{$("gok").disabled=false}}
+async function enter(){if(!me)return;const s=await getDoc(doc(db,"users",me.uid));myRole=s.exists()?(s.data().role||"user"):"user";if(myRole==="owner"&&sessionStorage.getItem("unlocked")!=="owner"){gateUI(true);return}
+show("app");$("tabs").classList.remove("hide");$("otab").classList.toggle("hide",!(myRole==="owner"||myRole==="admin"));$("whoami").textContent=(me.email||"Google user")+" · "+myRole;watchClips();if(myRole==="owner"||myRole==="admin")watchUsers()}
+function watchClips(){if(unsubClips)unsubClips();const q=query(collection(db,"clips"),orderBy("createdAt","desc"));unsubClips=onSnapshot(q,s=>{const g=$("grid");g.innerHTML="";$("gempty").classList.toggle("hide",!s.empty);s.forEach(d=>{const c=d.data(),el=document.createElement("div");el.className="thumb";const im=document.createElement("img");im.alt=c.name||"Clip";im.src="https://drive.google.com/thumbnail?id="+encodeURIComponent(c.driveId)+"&sz=w500";const m=document.createElement("div");m.className="meta";m.textContent=(c.name||"File")+" · "+((c.size||0)/1048576).toFixed(1)+" MB";const a=document.createElement("div");a.className="acts";const dl=document.createElement("button");dl.textContent="Download";dl.onclick=()=>downloadClip(c);a.append(dl);if(c.uploader===me.uid||myRole==="owner"||myRole==="admin"){const del=document.createElement("button");del.textContent="Delete";del.onclick=()=>delClip(c,d.id);a.append(del)}el.append(im,m,a);g.append(el)})},e=>{$("gempty").textContent="Gallery error: "+(e.code||e.message);$("gempty").classList.remove("hide")})}
+async function downloadClip(c){try{const t=await ensureToken(),r=await fetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(c.driveId)+"?alt=media",{headers:{Authorization:"Bearer "+t}});if(!r.ok)throw Error("Download failed ("+r.status+")");const u=URL.createObjectURL(await r.blob()),a=document.createElement("a");a.href=u;a.download=c.name||"clip";document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000)}catch(e){alert("Download error: "+e.message)}}
+async function delClip(c,id){if(!confirm("Delete "+c.name+"?"))return;try{const t=await ensureToken(),r=await fetch("https://www.googleapis.com/drive/v3/files/"+encodeURIComponent(c.driveId),{method:"DELETE",headers:{Authorization:"Bearer "+t}});if(!r.ok&&r.status!==404)throw Error("Drive delete failed ("+r.status+")");await deleteDoc(doc(db,"clips",id))}catch(e){alert("Delete error: "+e.message)}}
+async function doUpload(){const f=$("file").files[0];$("uerr").textContent="";if(!f){$("uerr").textContent="Pehle file chuno.";return}$("ubtn").disabled=true;$("ubar").style.width="0";try{
+const t=await ensureToken(),meta={name:f.name,mimeType:f.type||"application/octet-stream"};
+const init=await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json; charset=UTF-8","X-Upload-Content-Type":meta.mimeType,"X-Upload-Content-Length":String(f.size)},body:JSON.stringify(meta)});
+if(!init.ok)throw Error("Upload shuru nahi hua ("+init.status+")");const session=init.headers.get("Location");if(!session)throw Error("Upload session URL nahi mila");
+const CH=2*1024*1024;let at=0,driveId=null;while(at<f.size){const end=Math.min(at+CH,f.size),r=await fetch(session,{method:"PUT",headers:{"Content-Range":"bytes "+at+"-"+(end-1)+"/"+f.size},body:f.slice(at,end)});if(r.status===308){at=end;$("ubar").style.width=Math.round(at*100/f.size)+"%"}else if(r.status===200||r.status===201){driveId=(await r.json()).id;at=end;$("ubar").style.width="100%";break}else throw Error("Upload chunk failed ("+r.status+")")}
+if(!driveId)throw Error("File upload complete nahi hua");
+// NOTE: Files are not made public. Drive sharing with each friend must be configured separately.
+const hash=f.size<=100*1048576?await sha(await f.arrayBuffer()):"";
+await addDoc(collection(db,"clips"),{name:f.name,size:f.size,mime:f.type||"application/octet-stream",driveId,sha256:hash,uploader:me.uid,uploaderEmail:me.email||"",createdAt:serverTimestamp()});
+$("file").value="";alert("Upload ho gaya.")
+}catch(e){$("uerr").textContent=e.message||String(e)}finally{$("ubtn").disabled=false}}
+function watchUsers(){if(unsubUsers)unsubUsers();unsubUsers=onSnapshot(collection(db,"users"),s=>{const box=$("users");box.innerHTML="";$("ucount").textContent=s.size+" log";s.forEach(d=>{const u=d.data(),r=document.createElement("div");r.className="row";const left=document.createElement("div"),email=document.createElement("div");email.style.fontSize="13px";email.textContent=u.email||"No email";const b=document.createElement("span");b.className="badge "+(u.role||"user");b.textContent=u.role||"user";left.append(email,b);const act=document.createElement("div");if(myRole==="owner"&&u.role!=="owner"){const t=document.createElement("button");t.className="btn ghost sm";t.textContent=u.role==="admin"?"Admin hatao":"Admin banao";t.onclick=async()=>{try{await updateDoc(doc(db,"users",d.id),{role:u.role==="admin"?"user":"admin"})}catch(e){alert(e.message)}};act.append(t)}r.append(left,act);box.append(r)})},e=>{$("users").textContent="Users error: "+e.message})}
+async function rotate(){const v=$("newcode").value.trim();$("cerr").textContent="";if(!/^[0-9]{4,12}$/.test(v)){$("cerr").textContent="4 se 12 digits ka code daalo.";return}$("cbtn").disabled=true;try{const field=$("which").value==="owner"?"ownerCodeHash":"userCodeHash";await setDoc(doc(db,"config","app"),{[field]:await sha(v)},{merge:true});$("newcode").value="";$("cerr").textContent="Code badal gaya."}catch(e){$("cerr").textContent="Error: "+(e.code||e.message)}finally{$("cbtn").disabled=false}}
+$("gbtn").onclick=login;$("gok").onclick=tryCode;$("code").onkeydown=e=>{if(e.key==="Enter")tryCode()};$("ubtn").onclick=doUpload;$("cbtn").onclick=rotate;
+$("out").onclick=async()=>{if(unsubClips)unsubClips();if(unsubUsers)unsubUsers();unsubClips=unsubUsers=null;token=null;myRole=null;sessionStorage.clear();await signOut(auth)};
+document.querySelectorAll(".tabs button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".tabs button").forEach(x=>x.classList.toggle("on",x===b));["Gallery","Upload","Owner"].forEach(t=>$("tab"+t).classList.toggle("hide",t!==b.dataset.t))});
+try{const r=await getRedirectResult(auth);if(r)token=GoogleAuthProvider.credentialFromResult(r)?.accessToken||null}catch(e){$("lerr").textContent="Google login error: "+e.message}
+onAuthStateChanged(auth,async u=>{try{if(!u){me=null;show("login");$("gbtn").disabled=false;return}me=u;const s=await getDoc(doc(db,"users",u.uid));if(!s.exists()){gateUI(false);return}await enter()}catch(e){show("boot");$("boot").textContent="Firebase Error: "+(e.code||e.message)}});
+</script>
+</body>
+</html>
